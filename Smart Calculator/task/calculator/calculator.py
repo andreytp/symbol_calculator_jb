@@ -1,114 +1,221 @@
+OPERATIONS = ('+', '-', '*', '/', '^',)
+ALL_OPERATIONS = ('(', ')', '^', '*', '/', '+', '-',)
+SIGNS = ('+', '-',)
+
+
+def decode_expression(expression):
+    for sign in ALL_OPERATIONS:
+        expression = expression.replace(sign, ' ' + sign + ' ')
+
+    decoded_list = []
+    calc_list = expression.split()
+    has_error = False
+    for item in calc_list:
+        if item[0].isalpha():
+            var_key = item.split('=')[0]
+            if var_key not in variables.keys():
+                print('Unknown variable')
+                has_error |= True
+                break
+            decoded_list.append(variables[var_key])
+            continue
+        decoded_list.append(item)
+    return has_error, decoded_list
+
+
+def normalize_operations(expression):
+    while True:
+        make_changes = False
+        while True:
+            pos = expression.find('++')
+            if pos < 0:
+                break
+            expression = expression.replace('++', '+')
+            make_changes |= True
+
+        while True:
+            pos = expression.find('--')
+            if pos < 0:
+                break
+            expression = expression.replace('--', '+')
+            make_changes |= True
+
+        while True:
+            pos = expression.find('+-')
+            if pos < 0:
+                break
+            expression = expression.replace('+-', '-')
+            make_changes |= True
+
+        while True:
+            pos = expression.find('-+')
+            if pos < 0:
+                break
+            expression = expression.replace('-+', '-')
+            make_changes |= True
+
+        if not make_changes:
+            break
+    return expression
+
+
+def check_assignation(expression):
+    try:
+        name, value = expression.split('=')
+        for char in name:
+            if char.isdigit():
+                print('Invalid identifier')
+                return True
+
+        if value[0].isalpha():
+            if value not in variables.keys():
+                print('Unknown variable')
+                return True
+            variables[name] = variables[value]
+        else:
+            for char in value:
+                if not (char.isdigit() or char in SIGNS):
+                    print('Invalid assignment')
+                    return True
+            variables[name] = value
+    except ValueError:
+        print('Invalid assignment')
+        return True
+    return False
+
+
+def check_parenthesis(expression):
+    count = 0
+    for item in expression:
+        if item == '(':
+            count += 1
+        if item == ')':
+            count -= 1
+    return count != 0
+
+
+def expression_not_correct(expression):
+    if expression == '':
+        return True
+
+    if expression.startswith('/'):
+        print('Unknown command')
+        return True
+
+    if expression.find('=') >= 0:
+        if check_assignation(expression):
+            return True
+
+    if check_parenthesis(expression):
+        print('Invalid expression')
+        return True
+
+    if expression.endswith(OPERATIONS):
+        print('Invalid expression')
+        return True
+
+    return False
+
+
+def invert_list(input_list):
+    stack = []
+    priority = {'^': 4, '(': 3, ')': 3, '*': 2, '/': 2, '+': 1, '-': 1}
+    output = []
+    for item in input_list:
+        if item in ALL_OPERATIONS:
+            if stack:
+                if item == ')':
+                    while True:
+                        operation = stack.pop()
+                        if operation == '(':
+                            break
+                        output.append(operation)
+                    continue
+
+                last = stack.pop()
+
+                if last == '(':
+                    stack.append(last)
+                    stack.append(item)
+                    continue
+
+                if priority[item] <= priority[last]:
+                    output.append(last)
+                    while stack:
+                        val = stack.pop()
+                        if val == '(' or priority[item] > priority[val]:
+                            stack.append(val)
+                            break
+                        output.append(val)
+                    stack.append(item)
+                else:
+                    stack.append(last)
+                    stack.append(item)
+
+            else:
+                stack.append(item)
+            continue
+        output.append(item)
+
+    if stack:
+        output.append(stack.pop())
+    return output
+
+
+def calculate(input_list):
+    operation_dictionary = {'*': lambda x, y: float(x) * float(y),
+                            '/': lambda x, y: float(x) / float(y),
+                            '+': lambda x, y: float(x) + float(y),
+                            '-': lambda x, y: float(x) - float(y),
+                            }
+    stack = []
+    for item in input_list:
+        if item in OPERATIONS:
+            if len(stack) == 1 and item == '-':
+                res = int(stack.pop()) * -1
+                stack.append(str(res))
+                continue
+            second = stack.pop()
+            first = stack.pop()
+            res = operation_dictionary[item](first, second)
+            stack.append(str(res))
+            continue
+        stack.append(item)
+    result = stack.pop()
+    if result.endswith('.0'):
+        result = result.replace('.0', '')
+    return result
+
 
 if __name__ == '__main__':
     variables = {}
     while True:
-        string_expression = input()
+        # string_expression = input()
+        # string_expression = '10*2/4-3'
+        # string_expression = '5*6-(2-9)'
+        string_expression = '8 * 3 + 12 * (4 - 2)'
         string_expression = string_expression.replace(' ', '')
-
-        if string_expression == '':
-            continue
-
-        if '/help' in string_expression:
-            print('The program calculates the sum of numbers')
-            continue
 
         if '/exit' in string_expression:
             print('Bye!')
             break
 
-        if string_expression.startswith('/'):
-            print('Unknown command')
+        if '/help' in string_expression:
+            print('The program calculates the sum of numbers')
             continue
 
-        if string_expression.find('=') >= 0:
-            try:
-                name, value = string_expression.split('=')
-                has_digit = False
-                for char in name:
-                    if char.isdigit():
-                        has_digit = True
-                        break
-                if has_digit:
-                    print('Invalid identifier')
-                    continue
-
-                if value[0].isalpha():
-                    if value not in variables.keys():
-                        print('Unknown variable')
-                        continue
-                    variables[name] = variables[value]
-                else:
-                    has_not_digit = False
-                    for char in value:
-                        if not(char.isdigit() or char in '+-'):
-                            has_not_digit = True
-                            break
-                    if has_not_digit:
-                        print('Invalid assignment')
-                        continue
-                    variables[name] = value
-                continue
-            except ValueError:
-                print('Invalid assignment')
-                continue
-
-        if string_expression.endswith(('+', '-')):
-            print('Invalid expression')
+        if expression_not_correct(string_expression):
             continue
 
-        while True:
-            make_changes = False
-            while True:
-                pos = string_expression.find('++')
-                if pos < 0:
-                    break
-                string_expression = string_expression.replace('++', '+')
-                make_changes |= True
+        string_expression = normalize_operations(string_expression)
 
-            while True:
-                pos = string_expression.find('--')
-                if pos < 0:
-                    break
-                string_expression = string_expression.replace('--', '+')
-                make_changes |= True
-
-            while True:
-                pos = string_expression.find('+-')
-                if pos < 0:
-                    break
-                string_expression = string_expression.replace('+-', '-')
-                make_changes |= True
-
-            while True:
-                pos = string_expression.find('-+')
-                if pos < 0:
-                    break
-                string_expression = string_expression.replace('-+', '-')
-                make_changes |= True
-
-            if not make_changes:
-                break
-
-        string_expression = string_expression.replace('+', ' +').replace('-', ' -')
-        # print(str)
-
-        decode_list = []
-        calc_list = string_expression.split()
-        has_error = False
-        for item in calc_list:
-            first = 0
-            if item.startswith(('+', '-')):
-                first = 1
-            if item[first].isalpha():
-                var_key = item[first:]
-                if var_key not in variables.keys():
-                    print('Unknown variable')
-                    has_error = True
-                    break
-                decode_list.append(item[:first] + variables[var_key])
-                continue
-            decode_list.append(item)
+        has_error, decoded_list = decode_expression(string_expression)
         if has_error:
             continue
 
-        print(sum(int(i) for i in decode_list))
+        inverted_list = invert_list(decoded_list)
+
+        print(inverted_list)
+        print(calculate(invert_list(decoded_list)))
+        break
+        # print(sum(int(i) for i in decoded_list))
