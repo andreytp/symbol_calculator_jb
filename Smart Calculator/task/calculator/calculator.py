@@ -33,6 +33,13 @@ def normalize_operations(expression):
             expression = expression.replace('++', '+')
             make_changes |= True
 
+        # while True:
+        #     pos = expression.find('**')
+        #     if pos < 0:
+        #         break
+        #     expression = expression.replace('**', '*')
+        #     make_changes |= True
+
         while True:
             pos = expression.find('--')
             if pos < 0:
@@ -102,15 +109,19 @@ def expression_not_correct(expression):
         print('Unknown command')
         return True
 
-    if expression.find('=') >= 0:
-        if check_assignation(expression):
-            return True
-
     if check_parenthesis(expression):
         print('Invalid expression')
         return True
 
     if expression.endswith(OPERATIONS):
+        print('Invalid expression')
+        return True
+
+    if expression.find('**') >= 0:
+        print('Invalid expression')
+        return True
+
+    if expression.find('//') >= 0:
         print('Invalid expression')
         return True
 
@@ -122,43 +133,58 @@ def invert_list(input_list):
     priority = {'^': 4, '(': 3, ')': 3, '*': 2, '/': 2, '+': 1, '-': 1}
     output = []
     for item in input_list:
-        if item in ALL_OPERATIONS:
-            if stack:
-                if item == ')':
-                    while True:
-                        operation = stack.pop()
-                        if operation == '(':
-                            break
-                        output.append(operation)
-                    continue
 
-                last = stack.pop()
-
-                if last == '(':
-                    stack.append(last)
-                    stack.append(item)
-                    continue
-
-                if priority[item] <= priority[last]:
-                    output.append(last)
-                    while stack:
-                        val = stack.pop()
-                        if val == '(' or priority[item] > priority[val]:
-                            stack.append(val)
-                            break
-                        output.append(val)
-                    stack.append(item)
-                else:
-                    stack.append(last)
-                    stack.append(item)
-
-            else:
-                stack.append(item)
+        if item == '(':
+            stack.append(item)
             continue
-        output.append(item)
 
-    if stack:
+        if item == ')':
+            while stack:
+                top = stack.pop()
+                if top == '(':
+                    break
+                output.append(top)
+            continue
+
+        if item not in OPERATIONS:
+            output.append(item)
+            continue
+
+        if not stack:
+            stack.append(item)
+            continue
+
+        top = stack.pop()
+
+        if top == '(':
+            stack.append(top)
+            stack.append(item)
+            continue
+
+        if priority[item] > priority[top]:
+            stack.append(top)
+            stack.append(item)
+            continue
+
+        stack.append(top)
+        while stack:
+            top = stack.pop()
+
+            if priority[item] > priority[top]:
+                stack.append(top)
+                break
+
+            if top == '(':
+                stack.append(top)
+                break
+
+            output.append(top)
+
+        stack.append(item)
+
+    while stack:
         output.append(stack.pop())
+
     return output
 
 
@@ -167,6 +193,7 @@ def calculate(input_list):
                             '/': lambda x, y: float(x) / float(y),
                             '+': lambda x, y: float(x) + float(y),
                             '-': lambda x, y: float(x) - float(y),
+                            '^': lambda x, y: pow(float(x), float(y)),
                             }
     stack = []
     for item in input_list:
@@ -190,10 +217,11 @@ def calculate(input_list):
 if __name__ == '__main__':
     variables = {}
     while True:
-        # string_expression = input()
+        string_expression = input()
         # string_expression = '10*2/4-3'
         # string_expression = '5*6-(2-9)'
-        string_expression = '8 * 3 + 12 * (4 - 2)'
+        # string_expression = '8 * 3 + 12 * (4 - 2)'
+        # string_expression = '2*2^3'
         string_expression = string_expression.replace(' ', '')
 
         if '/exit' in string_expression:
@@ -207,6 +235,11 @@ if __name__ == '__main__':
         if expression_not_correct(string_expression):
             continue
 
+        if string_expression.find('=') >= 0:
+            if check_assignation(string_expression):
+                continue
+            continue
+
         string_expression = normalize_operations(string_expression)
 
         has_error, decoded_list = decode_expression(string_expression)
@@ -215,7 +248,7 @@ if __name__ == '__main__':
 
         inverted_list = invert_list(decoded_list)
 
-        print(inverted_list)
+        # print(inverted_list)
         print(calculate(invert_list(decoded_list)))
-        break
+        # break
         # print(sum(int(i) for i in decoded_list))
